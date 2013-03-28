@@ -51,6 +51,7 @@ import java.awt.SystemColor;
 import javax.swing.JMenuBar;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+import java.awt.event.InputEvent;
 
 
 public class MainAppWindow implements ActionListener, MouseListener, MouseMotionListener, ChangeListener{
@@ -245,6 +246,12 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		mntmNaive.setAccelerator(KeyStroke.getKeyStroke(
 		        KeyEvent.VK_N, ActionEvent.CTRL_MASK));
 		mnRandom.add(mntmNaive);
+		
+		JMenuItem mntmUniform = new JMenuItem("Uniform");
+		mntmUniform.setActionCommand("trueMenu");
+		mntmUniform.addActionListener(this);
+		mntmUniform.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_U, InputEvent.CTRL_MASK));
+		mnRandom.add(mntmUniform);
 		
 		
 		
@@ -511,6 +518,25 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		}
 		
 	} 
+	
+	private void createTrueUniformRandom(int width, int height, int num){
+		reset();
+		int numOfMotes = 1;
+		
+		while(numOfMotes < num){
+			int x = rgen.nextInt(width);
+			int y = rgen.nextInt(height);
+			if(isLocationAvailable(x, y)){
+				Mote m = new Mote(x, y, dfRadius);
+				motes.add(m);
+				moteid.put(Integer.valueOf(m.getId()), m);
+				fillMap(x, y, m.getId());
+				m.maintainConsistency();
+				numOfMotes++;
+			}
+		}
+	}
+	
 	private boolean pointAcceptable(Point p, Mote m){
 		if(p.equals(m.getLocation()))
 			return false;
@@ -591,7 +617,19 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	        	int num = customDialog.getNum();
 	        	createNaive(num);
 	        }
+		}else if(action.equalsIgnoreCase("trueMenu")){
+			TrueUniformRandomDiag customDialog = new TrueUniformRandomDiag(frame, "geisel");
+			customDialog.pack();
+	        customDialog.setVisible(true);
+	        
+	        if(customDialog.isValid()){
+	        	int w = customDialog.getRegionWidth();
+	        	int h = customDialog.getRegionHeight();
+	        	int num = customDialog.getNum();
+	        	createTrueUniformRandom(w, h, num);
+	        }
 		}
+		
 	}
 	
 	@Override
