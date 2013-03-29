@@ -35,21 +35,21 @@ PropertyChangeListener {
 
         
         SpinnerNumberModel widthModel = new SpinnerNumberModel(
-                new Integer(200), // value
+                new Integer(400), // value
                 new Integer(1), // min
                 new Integer(1000), // max
                 new Integer(1) // step
         );
         
         SpinnerNumberModel heightModel = new SpinnerNumberModel(
-                new Integer(200), // value
+                new Integer(400), // value
                 new Integer(1), // min
                 new Integer(1000), // max
                 new Integer(1) // step
         );
         
         SpinnerNumberModel numModel = new SpinnerNumberModel(
-                new Integer(30), // value
+                new Integer(60), // value
                 new Integer(1), // min
                 new Integer(200), // max
                 new Integer(1) // step

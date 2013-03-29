@@ -23,6 +23,7 @@ import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -54,48 +55,50 @@ import javax.swing.JMenuItem;
 import java.awt.event.InputEvent;
 
 
-public class MainAppWindow implements ActionListener, MouseListener, MouseMotionListener, ChangeListener{
-	private enum Action{
+public class MainAppWindow implements ActionListener, MouseListener, MouseMotionListener, ChangeListener, KeyListener{
+	public enum Action{
 		NONE,
 		ADDING,
 		DRAGGING,
 		RESIZING,
 		SELECTION
 	}
-	private JFrame frame;
-	private JPanel landfield;
-	private JScrollPane scrollPane;
-	JLabel dSizeLable;
-	JSlider dfSlider;
-	int map[][] = new int[1000][1000];
-	int dfRadius;
-	ArrayList<Integer> regions[][] = (ArrayList<Integer>[][])Array.newInstance(ArrayList.class, 20, 20);
-	Action curAction = Action.NONE;
-	static int idCounter = 1;
-	List<Mote> motes;
-	Map<Integer, Mote> moteid;
-	Mote slcMote = null;
-	Color cMote = new Color( 0, 0, 0);
-	Color cReach = new Color(100, 205, 0, 70);
-	Color cMoteS = new Color(255, 64, 64);
-	Color cMoteSD = new Color(200, 64, 64);
-	Color cText = new Color(50, 50, 50);
-	Color cEdge = new Color(255, 0, 255);
-	Color cReachS = new Color(0, 0, 255, 70);
-	Color bckgrnd = new Color(255, 255, 255);
-	Stroke sEdge = new BasicStroke(2);
+	public JFrame frame;
+	//public JPanel landfield;
+	public LandField landfield;
+	public JScrollPane scrollPane;
+	public JLabel dSizeLable;
+	public JSlider dfSlider;
+	public int map[][] = new int[1000][1000];
+	public int dfRadius;
+	public ArrayList<Integer> regions[][] = (ArrayList<Integer>[][])Array.newInstance(ArrayList.class, 20, 20);
+	public Action curAction = Action.NONE;
+	public static int idCounter = 1;
+	public List<Mote> motes;
+	public Map<Integer, Mote> moteid;
+	public Mote slcMote = null;
+	public Color cMote = new Color( 0, 0, 0);
+	public Color cReach = new Color(100, 205, 0, 70);
+	public Color cMoteS = new Color(255, 64, 64);
+	public Color cMoteSD = new Color(200, 64, 64);
+	public Color cText = new Color(50, 50, 50);
+	public Color cEdge = new Color(255, 0, 255);
+	public Color cReachS = new Color(0, 0, 255, 70);
+	public Color cCross = Color.RED;
+	public Color bckgrnd = new Color(255, 255, 255);
+	public Stroke sEdge = new BasicStroke(2);
 	
-	Point oldLoc;
-	Point slcTpLeft;
-	Point slcBtmRgt;
+	public Point oldLoc;
+	public Point slcTpLeft;
+	public Point slcBtmRgt;
 	
-	JLabel pointerLoc;
-	JLabel moteID;
-	JLabel moteRadius;
+	public JLabel pointerLoc;
+	public JLabel moteID;
+	public JLabel moteRadius;
 	
-	final Random rgen = new Random();
+	public final Random rgen = new Random();
 	
-	final JFileChooser fc = new JFileChooser();
+	public final JFileChooser fc = new JFileChooser();
 	/**
 	 * Launch the application.
 	 */
@@ -141,18 +144,25 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().setLayout(null);
 		
+		
+		
 		scrollPane = new JScrollPane();
 		scrollPane.setPreferredSize(new Dimension(500, 400));
 		scrollPane.setSize(new Dimension(500, 400));
 		scrollPane.setBounds(12, 13, 571, 435);
 		frame.getContentPane().add(scrollPane);
 		
-		landfield = new JPanel();
+		//landfield = new JPanel();
+		landfield = new LandField(this);
 		landfield.setBackground(SystemColor.inactiveCaptionText);
 		landfield.setPreferredSize(new Dimension(1000, 1000));
 		landfield.setSize(new Dimension(1000, 1000));
 		landfield.addMouseListener(this);
 		landfield.addMouseMotionListener(this);
+		frame.addKeyListener(this);
+		frame.requestFocus();
+		
+		
 		scrollPane.setViewportView(landfield);
 		
 		JButton btnAddNode = new JButton("");
@@ -202,7 +212,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		dfSlider.setBounds(730, 65, 35, 161);
 		dfSlider.addChangeListener(this);
 		frame.getContentPane().add(dfSlider);
-		dfSlider.setValue(30);
+		dfSlider.setValue(70);
 		
 		JLabel lblRadius = new JLabel("Radius:");
 		lblRadius.setBounds(671, 228, 56, 16);
@@ -268,18 +278,18 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 					} catch( InterruptedException e ) {
 						System.out.println("Interrupted Exception caught");
 					}
-					refreshView();
+					landfield.refreshView();
 				}
 			}});
-		t.start();
+		//t.start();
 	}
 	
 	
-	void drawArrowHead(Graphics2D g2, Point tip, Point tail)  
+	void drawArrowHead(Graphics2D g, Point tip, Point tail)  
     {  
 		double phi = Math.toRadians(30);  
         int barb = 15;
-		g2.setPaint(cText);  
+		g.setPaint(cText);  
         double dy = tip.y - tail.y;  
         double dx = tip.x - tail.x;  
         double theta = Math.atan2(dy, dx);  
@@ -289,11 +299,20 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
         {  
             x = tip.x - barb * Math.cos(rho);  
             y = tip.y - barb * Math.sin(rho);  
-            g2.draw(new Line2D.Double(tip.x, tip.y, x, y));  
+            g.draw(new Line2D.Double(tip.x, tip.y, x, y));  
             rho = theta - phi;  
         }  
     }
 	
+	void drawCross(Graphics2D g2, Point center){
+		int xLeft = center.x - 10;
+		int xRight = center.x + 10;
+		int yUp = center.y - 10;
+		int yDown = center.y + 10;
+		g2.setColor(cCross);
+		g2.drawLine(xLeft, yDown, xRight, yUp);
+		g2.drawLine(xLeft, yUp, xRight, yDown);
+	}
 	
 	private synchronized void refreshView(){
 		Graphics2D g =  (Graphics2D)landfield.getGraphics();
@@ -327,6 +346,9 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 				}
 				g.setColor(cMote);
 				g.fillOval(p.x - 5, p.y - 5, 11, 11);
+				if(m.getSink()){
+					drawCross(g,p);
+				}
 				g.setColor(cText);
 				g.drawString("id: " +m.getId(), p.x - 5, p.y + 20);
 				g.drawString("r: " +m.getRadius(), p.x - 5, p.y + 30);
@@ -357,6 +379,9 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 				g.setColor(cMoteS);
 			}
 			g.fillOval((int)p.getX() - 5, (int)p.getY() - 5, 11, 11);
+			if(slcMote.isSink){
+				drawCross(g,p);
+			}
 			g.setColor(cText);
 			g.drawString("id: " +slcMote.getId(), p.x - 5, p.y + 20);
 			g.drawString("r: " +slcMote.getRadius(), p.x - 5, p.y + 30);
@@ -442,8 +467,8 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 			}
 		}
 		slcMote = null;
-		idCounter = 0;
-		refreshView();
+		idCounter = 1;
+		landfield.refreshView();
 	}
 	
 	
@@ -523,7 +548,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		reset();
 		int numOfMotes = 1;
 		
-		while(numOfMotes < num){
+		while(numOfMotes <= num){
 			int x = rgen.nextInt(width);
 			int y = rgen.nextInt(height);
 			if(isLocationAvailable(x, y)){
@@ -535,6 +560,16 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 				numOfMotes++;
 			}
 		}
+/*		int numOfSinks = num/10;
+		int curNumOfSinks = 0;
+		while(curNumOfSinks < numOfSinks){
+			int index = rgen.nextInt(num);
+			Mote m = motes.get(index);
+			if(!m.isSink){
+				m.setSink(true);
+				curNumOfSinks++;
+			}
+		}*/
 	}
 	
 	private boolean pointAcceptable(Point p, Mote m){
@@ -652,6 +687,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 
 	@Override
 	public void mousePressed(MouseEvent e) {
+		frame.requestFocus();
 		int x = e.getX();
 		int y = e.getY();
 		switch(curAction){
@@ -705,7 +741,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 			}
 			break;
 		}
-		refreshView();
+		landfield.refreshView();
 		
 	}
 
@@ -736,7 +772,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		slcTpLeft = null;
 		slcBtmRgt = null;
 		curAction = Action.NONE;
-		refreshView();
+		landfield.refreshView();
 	}
 	
 	@Override
@@ -783,7 +819,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 				}
 			}
 			if(redraw)
-				refreshView();
+				landfield.refreshView();
 		}
 	}
 	
@@ -795,20 +831,20 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		case DRAGGING:
 			slcMote.setLocation(x, y);
 			slcMote.maintainConsistency();
-			refreshView();
+			landfield.refreshView();
 			break;
 		case RESIZING:
 			int r = (int)slcMote.getLocation().distance(x, y);
 			if(r > 8){
 				slcMote.setRadius(r);
 				slcMote.maintainConsistency();
-				refreshView();
+				landfield.refreshView();
 			}
 			break;
 		case SELECTION:
 			slcBtmRgt.x = x;
 			slcBtmRgt.y = y;
-			refreshView();
+			landfield.refreshView();
 			break;
 		}
 		
@@ -823,23 +859,55 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		
 	}
 	
-	private class LandField extends JPanel{
-		protected void paintComponent(Graphics g){
-			super.paintComponent(g);
-			Color c = g.getColor();
-			g.setColor(new Color(255, 64, 64));
-			g.fillOval(70, 70, 25, 25);
-			g.setColor(c);
+
+	@Override
+	public void keyPressed(KeyEvent e) {
+		
+		if(e.getKeyChar() == 'x'){
+			if((e.getModifiers() & KeyEvent.CTRL_DOWN_MASK) == KeyEvent.CTRL_DOWN_MASK){
+				for(Mote m: motes){
+					if(m.isSink)
+						m.isSink= false;
+				}
+			}else{
+				if(slcMote != null){
+					if(slcMote.isSink){
+						slcMote.isSink = false;
+					}else{
+						slcMote.isSink = true;
+					}
+				}
+			}
+			
+			
 		}
+		landfield.refreshView();
+	}
+
+	@Override
+	public void keyReleased(KeyEvent e) {
+	}
+
+	@Override
+	public void keyTyped(KeyEvent e) {
+
+	}
+	
+	public void calculateShortestPath(Mote s, Mote d){
 		
 	}
 	
+	public class Link{
+		
+	}
+
+	
 
 	
 
 
 	
-	private class Mote{
+	public class Mote{
 		int radius, id;
 		Point location;
 		List<Point> rgns;
@@ -849,6 +917,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		List<Mote> outNeighbours;
 		List<Mote> inNeighbours;
 		Integer idObj;
+		boolean isSink = false;
 		public Mote(int x,int y, int r){
 			id = idCounter++;
 			idObj = new Integer(id);
@@ -924,6 +993,14 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		
 		public boolean getSelect(){
 			return isSelected;
+		}
+		
+		public boolean getSink(){
+			return isSink;
+		}
+		
+		public void setSink(boolean s){
+			isSink = s;
 		}
 		
 		public int getId(){
@@ -1079,4 +1156,10 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 			return "[" +id + ", " + radius+ ", (" + location.x+", " +location.y+ ")]";
 		}
 	}
+
+
+
+
+
+
 }
