@@ -75,6 +75,8 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	public Action curAction = Action.NONE;
 	public static int idCounter = 1;
 	public List<Mote> motes;
+	public List<Mote> sinks;
+	public List<Link> links;
 	public Map<Integer, Mote> moteid;
 	public Mote slcMote = null;
 	public Color cMote = new Color( 0, 0, 0);
@@ -96,7 +98,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	public JLabel moteID;
 	public JLabel moteRadius;
 	
-	public final Random rgen = new Random();
+	public final Random rgen = new Random(90876875);
 	
 	public final JFileChooser fc = new JFileChooser();
 	/**
@@ -266,9 +268,11 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		
 		
 		motes = new ArrayList<Mote>();
+		sinks = new ArrayList<Mote>();
+		links = new ArrayList<Link>();
 		moteid = new HashMap<Integer, Mote>();
 		
-		Thread t = new Thread(new Runnable(){
+/*		Thread t = new Thread(new Runnable(){
 
 			@Override
 			public void run() {
@@ -280,7 +284,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 					}
 					landfield.refreshView();
 				}
-			}});
+			}});*/
 		//t.start();
 	}
 	
@@ -864,21 +868,15 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	public void keyPressed(KeyEvent e) {
 		
 		if(e.getKeyChar() == 'x'){
-			if((e.getModifiers() & KeyEvent.CTRL_DOWN_MASK) == KeyEvent.CTRL_DOWN_MASK){
-				for(Mote m: motes){
-					if(m.isSink)
-						m.isSink= false;
-				}
-			}else{
-				if(slcMote != null){
-					if(slcMote.isSink){
-						slcMote.isSink = false;
-					}else{
-						slcMote.isSink = true;
-					}
+			if(slcMote != null){
+				if(slcMote.isSink){
+					slcMote.isSink = false;
+					sinks.remove(slcMote);
+				}else{
+					slcMote.isSink = true;
+					sinks.add(slcMote);
 				}
 			}
-			
 			
 		}
 		landfield.refreshView();
@@ -893,19 +891,69 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 
 	}
 	
-	public void calculateShortestPath(Mote s, Mote d){
-		
+	
+	public Map<Mote, Mote> applyDijkstra(Mote s){
+		return null;
+	}
+	
+	public List<Mote> calculateShortestPath(Mote s, Mote d, Map<Mote, Mote> tree){
+		List<Mote> chain  = new ArrayList<Mote>();
+		chain.add(d);
+		Mote curMote = d;
+		do{
+			curMote = tree.get(curMote);
+			chain.add(curMote);
+		}while(!curMote.equals(s));
+		return chain;
+	}
+	
+	public void createLinks(){
+		for(Mote m:motes){
+			for(Mote n:m.inNeighbours){
+				links.add(new Link(m,n));
+			}
+		}
+	}
+	
+	public void addFlow(List<Mote> chain){
+		for(int i = 0; i < chain.size() - 1; i++){
+			Mote f = chain.get(i);
+			Mote t = chain.get(i + 1);
+			for(Link l : links){
+				if(l.from.equals(f) && l.to.equals(t)){
+					l.addTraffic(0.05);
+				}
+			}
+		}
 	}
 	
 	public class Link{
+		public Mote from;
+		public Mote to;
+		public double traffic;
 		
+		public Link(Mote f, Mote t){
+			from = f;
+			to = t;
+		}
+		
+		public void addTraffic(double t){
+			traffic += t;
+		}
+		
+		@Override
+		public boolean equals(Object obj){
+			if(!(obj instanceof Link))
+				return false;
+			Link l = (Link)obj;
+			if(!l.from.equals(this.from))
+				return false;
+			if(!l.to.equals(this.to))
+				return false;
+			
+			return true;
+		}
 	}
-
-	
-
-	
-
-
 	
 	public class Mote{
 		int radius, id;

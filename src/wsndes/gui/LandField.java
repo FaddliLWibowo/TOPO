@@ -85,12 +85,63 @@ public class LandField extends JPanel {
 		}
 		
 		if(main.slcMote != null){
-			
+			int r = main.slcMote.getRadius();
+			Point p = main.slcMote.getLocation();
+			g.setColor(main.cReachS);
+			g.fillOval((int)p.getX() - r , (int)p.getY() - r , 2 * r + 1, 2 * r + 1);
+		}
+		
+		
+		for(Mote m: main.motes){
+			Point p = m.getLocation();
+			List<Mote> ns = m.getOutNeighbours();
+			for(Mote n: ns){
+				g.setColor(main.cEdge);
+				g.drawLine(p.x, p.y, n.location.x, n.location.y);
+				drawArrowHead(g, n.location,p);
+			}
 		}
 		
 		
 		
 		for(Mote m: main.motes){
+			if(m != main.slcMote){
+				Point p = m.getLocation();
+				g.setColor(main.cMote);
+				g.fillOval(p.x - 5, p.y - 5, 11, 11);
+				if(m.getSink()){
+					main.drawCross(g,p);
+				}
+				g.setColor(main.cText);
+				g.drawString("id: " +m.getId(), p.x - 5, p.y + 20);
+				g.drawString("r: " +m.getRadius(), p.x - 5, p.y + 30);
+			}
+		}
+		
+		if(main.slcMote != null){
+			if(main.slcMote.getDragging()){
+				g.setColor(main.cMoteSD);
+			}else{
+				g.setColor(main.cMoteS);
+			}
+			int r = main.slcMote.getRadius();
+			Point p = main.slcMote.getLocation();
+			g.fillOval((int)p.getX() - 5, (int)p.getY() - 5, 11, 11);
+			if(main.slcMote.isSink){
+				drawCross(g,p);
+			}
+			
+			if(main.slcMote.getResize()){
+				g.setColor(main.cMoteS);
+				g.drawOval((int)p.getX() - r , (int)p.getY() - r  , 2 * r + 1, 2 * r + 1);
+			}
+			
+			g.setColor(main.cText);
+			g.drawString("id: " +main.slcMote.getId(), p.x - 5, p.y + 20);
+			g.drawString("r: " +main.slcMote.getRadius(), p.x - 5, p.y + 30);
+		}
+		
+/*		for(Mote m: main.motes){
 			if(m != main.slcMote){
 				
 				int r = m.getRadius();
@@ -144,7 +195,7 @@ public class LandField extends JPanel {
 			g.setColor(main.cText);
 			g.drawString("id: " +main.slcMote.getId(), p.x - 5, p.y + 20);
 			g.drawString("r: " +main.slcMote.getRadius(), p.x - 5, p.y + 30);
-		}
+		}*/
 		
 		if(main.curAction == MainAppWindow.Action.SELECTION){
 			float dash1[] = {10.0f};
