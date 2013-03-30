@@ -10,6 +10,8 @@ import java.awt.RenderingHints;
 import java.awt.Stroke;
 import java.awt.geom.Line2D;
 import java.util.List;
+
+import wsndes.gui.MainAppWindow.Link;
 import wsndes.gui.MainAppWindow.Mote;
 
 import javax.swing.Action;
@@ -19,6 +21,10 @@ import javax.swing.JPanel;
 
 public class LandField extends JPanel {
 	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -3480220979536559883L;
 	MainAppWindow main;
 	
 	/**
@@ -31,12 +37,11 @@ public class LandField extends JPanel {
 	void drawArrowHead(Graphics2D g, Point tip, Point tail)  
     {  
 		double phi = Math.toRadians(30);  
-        int barb = 15;
+        int barb = 12;
 		g.setPaint(main.cText);  
         double dy = tip.y - tail.y;  
         double dx = tip.x - tail.x;  
-        double theta = Math.atan2(dy, dx);  
-        //System.out.println("theta = " + Math.toDegrees(theta));  
+        double theta = Math.atan2(dy, dx);    
         double x, y, rho = theta + phi;  
         for(int j = 0; j < 2; j++)  
         {  
@@ -68,13 +73,7 @@ public class LandField extends JPanel {
 		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
 		g.setColor(main.cEdge);
-		/*
-		for(int i= 1; i <=19; i++){
-			int indx = 50 * i;
-			g.drawLine(0, indx, 1000, indx);
-			g.drawLine( indx, 0, indx, 1000);
-		}
-		*/
+
 		for(Mote m: main.motes){
 			if(m != main.slcMote){
 				int r = m.getRadius();
@@ -102,6 +101,16 @@ public class LandField extends JPanel {
 			}
 		}
 		
+		if(main.drawLayout){
+			g.setColor(main.cLink);
+			for(Link l: main.links){
+				if(l.traffic == 0)
+					continue;
+				Point f = l.from.location;
+				Point t = l.to.location;
+				g.drawLine(f.x, f.y, t.x, t.y);
+			}
+		}
 		
 		
 		for(Mote m: main.motes){
@@ -140,62 +149,6 @@ public class LandField extends JPanel {
 			g.drawString("id: " +main.slcMote.getId(), p.x - 5, p.y + 20);
 			g.drawString("r: " +main.slcMote.getRadius(), p.x - 5, p.y + 30);
 		}
-		
-/*		for(Mote m: main.motes){
-			if(m != main.slcMote){
-				
-				int r = m.getRadius();
-				Point p = m.getLocation();
-				g.setColor(main.cReach);
-				g.fillOval(p.x - r , p.y - r , 2 * r + 1, 2 * r + 1);
-				List<Mote> ns = m.getOutNeighbours();
-				for(Mote n: ns){
-					g.setColor(main.cEdge);
-					g.drawLine(p.x, p.y, n.location.x, n.location.y);
-					drawArrowHead(g, n.location,p);
-				}
-				g.setColor(main.cMote);
-				g.fillOval(p.x - 5, p.y - 5, 11, 11);
-				if(m.getSink()){
-					main.drawCross(g,p);
-				}
-				g.setColor(main.cText);
-				g.drawString("id: " +m.getId(), p.x - 5, p.y + 20);
-				g.drawString("r: " +m.getRadius(), p.x - 5, p.y + 30);
-			}
-		}
-		
-		if(main.slcMote != null){
-			int r = main.slcMote.getRadius();
-			Point p = main.slcMote.getLocation();
-			g.setColor(main.cReachS);
-			g.fillOval((int)p.getX() - r , (int)p.getY() - r , 2 * r + 1, 2 * r + 1);
-			if(main.slcMote.getResize()){
-				g.setColor(main.cMoteS);
-				g.drawOval((int)p.getX() - r , (int)p.getY() - r  , 2 * r + 1, 2 * r + 1);
-			}
-			
-			
-			List<Mote> ns = main.slcMote.getOutNeighbours();
-			for(Mote n: ns){
-				g.setColor(main.cEdge);
-				g.drawLine(p.x, p.y, n.location.x, n.location.y);
-				drawArrowHead(g, n.location,p);
-			}
-			
-			if(main.slcMote.getDragging()){
-				g.setColor(main.cMoteSD);
-			}else{
-				g.setColor(main.cMoteS);
-			}
-			g.fillOval((int)p.getX() - 5, (int)p.getY() - 5, 11, 11);
-			if(main.slcMote.isSink){
-				drawCross(g,p);
-			}
-			g.setColor(main.cText);
-			g.drawString("id: " +main.slcMote.getId(), p.x - 5, p.y + 20);
-			g.drawString("r: " +main.slcMote.getRadius(), p.x - 5, p.y + 30);
-		}*/
 		
 		if(main.curAction == MainAppWindow.Action.SELECTION){
 			float dash1[] = {10.0f};

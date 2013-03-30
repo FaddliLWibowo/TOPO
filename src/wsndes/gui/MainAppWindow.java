@@ -35,10 +35,12 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 import javax.swing.JButton;
 import javax.swing.border.EtchedBorder;
@@ -74,6 +76,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	public ArrayList<Integer> regions[][] = (ArrayList<Integer>[][])Array.newInstance(ArrayList.class, 20, 20);
 	public Action curAction = Action.NONE;
 	public static int idCounter = 1;
+	public boolean drawLayout = false;
 	public List<Mote> motes;
 	public List<Mote> sinks;
 	public List<Link> links;
@@ -84,7 +87,8 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	public Color cMoteS = new Color(255, 64, 64);
 	public Color cMoteSD = new Color(200, 64, 64);
 	public Color cText = new Color(50, 50, 50);
-	public Color cEdge = new Color(255, 0, 255);
+	public Color cEdge = new Color(80, 80, 80);
+	public Color cLink = new Color(255, 0, 255);
 	public Color cReachS = new Color(0, 0, 255, 70);
 	public Color cCross = Color.RED;
 	public Color bckgrnd = new Color(255, 255, 255);
@@ -460,6 +464,8 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	private void reset(){
 		motes.clear();
 		moteid.clear();
+		sinks.clear();
+		links.clear();
 		for(int i = 0; i < 1000; i++){
 			for(int j = 0; j < 1000; j++){
 				map[i][j] = 0;
@@ -513,6 +519,8 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 				m.maintainConsistency();
 			}
 		}
+		setUpNetwork();
+		landfield.refreshView();
 	}
 	
 	private void createNaive(int num){
@@ -545,7 +553,8 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 				numOfMotes++;
 			}
 		}
-		
+		setUpNetwork();
+		landfield.refreshView();
 	} 
 	
 	private void createTrueUniformRandom(int width, int height, int num){
@@ -564,6 +573,8 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 				numOfMotes++;
 			}
 		}
+		setUpNetwork();
+		landfield.refreshView();
 /*		int numOfSinks = num/10;
 		int curNumOfSinks = 0;
 		while(curNumOfSinks < numOfSinks){
@@ -691,6 +702,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 
 	@Override
 	public void mousePressed(MouseEvent e) {
+		drawLayout = false;
 		frame.requestFocus();
 		int x = e.getX();
 		int y = e.getY();
@@ -776,6 +788,8 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		slcTpLeft = null;
 		slcBtmRgt = null;
 		curAction = Action.NONE;
+		drawLayout = true;
+		setUpNetwork();
 		landfield.refreshView();
 	}
 	
@@ -876,6 +890,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 					slcMote.isSink = true;
 					sinks.add(slcMote);
 				}
+				setUpNetwork();
 			}
 			
 		}
@@ -892,16 +907,62 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	}
 	
 	
-	public Map<Mote, Mote> applyDijkstra(Mote s){
-		return null;
+	public void setUpNetwork(){
+		discardLinks();
+		createLinks();
+		computeTrafics();
 	}
 	
-	public List<Mote> calculateShortestPath(Mote s, Mote d, Map<Mote, Mote> tree){
+	public void computeTrafics(){
+		for(Mote m: motes){
+			if(!m.isSink){
+				System.out.println("attending " + m.id);
+				Map<Mote, Mote> tree =  spanRouteTree(m);
+				List<Mote> pathToClosestSink = null;
+				for(Mote s:sinks){
+					List<Mote> pathToSink = getShortestPath(m, s, tree);
+					if(pathToSink.size() == 0)
+						continue;
+					
+					if(pathToClosestSink == null || pathToSink.size() < pathToClosestSink.size()){
+						pathToClosestSink = pathToSink;
+					}
+				}
+				if(pathToClosestSink != null)
+					addFlow(pathToClosestSink, 0.05);
+			}
+		}
+	}
+	
+	
+	public Map<Mote, Mote> spanRouteTree(Mote s){
+		Map<Mote, Mote> tree = new HashMap<Mote, Mote>();
+		List<Mote> visited = new ArrayList<Mote>();
+		List<Mote> discovered = new ArrayList<Mote>();
+		discovered.add(s);
+		visited.add(s);
+		
+		do{
+			Mote cur = discovered.remove(0);
+			for(Mote n:cur.outNeighbours){
+				if(!visited.contains(n)){
+					tree.put(n, cur);
+					visited.add(n);
+					discovered.add(n);
+				}
+			}
+		}while(!discovered.isEmpty());
+		return tree;
+	}
+	
+	public List<Mote> getShortestPath(Mote s, Mote d, Map<Mote, Mote> tree){
 		List<Mote> chain  = new ArrayList<Mote>();
 		chain.add(d);
 		Mote curMote = d;
 		do{
 			curMote = tree.get(curMote);
+			if(curMote == null)
+				break;
 			chain.add(curMote);
 		}while(!curMote.equals(s));
 		return chain;
@@ -915,13 +976,17 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		}
 	}
 	
-	public void addFlow(List<Mote> chain){
+	public void discardLinks(){
+		links.clear();
+	}
+	
+	public void addFlow(List<Mote> chain, double tfc){
 		for(int i = 0; i < chain.size() - 1; i++){
 			Mote f = chain.get(i);
 			Mote t = chain.get(i + 1);
 			for(Link l : links){
 				if(l.from.equals(f) && l.to.equals(t)){
-					l.addTraffic(0.05);
+					l.addTraffic(tfc);
 				}
 			}
 		}
@@ -938,7 +1003,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		}
 		
 		public void addTraffic(double t){
-			traffic += t;
+			traffic = Math.min(1.0, traffic + t);
 		}
 		
 		@Override
