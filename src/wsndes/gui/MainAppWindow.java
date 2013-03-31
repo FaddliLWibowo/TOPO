@@ -3,12 +3,9 @@ package wsndes.gui;
 
 import java.awt.BasicStroke;
 import java.awt.EventQueue;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Rectangle;
-import java.awt.RenderingHints;
 import java.awt.Stroke;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
@@ -16,7 +13,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.KeyStroke;
 import javax.swing.UIManager;
-import javax.swing.UnsupportedLookAndFeelException;
 import java.awt.Dimension;
 import javax.swing.JPanel;
 import java.awt.Color;
@@ -35,17 +31,16 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
-
 import javax.swing.JButton;
 import javax.swing.border.EtchedBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.filechooser.FileFilter;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.JLabel;
 import javax.swing.JSlider;
 import javax.swing.SwingConstants;
@@ -66,7 +61,6 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		SELECTION
 	}
 	public JFrame frame;
-	//public JPanel landfield;
 	public LandField landfield;
 	public JScrollPane scrollPane;
 	public JLabel dSizeLable;
@@ -89,10 +83,15 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	public Color cText = new Color(50, 50, 50);
 	public Color cEdge = new Color(80, 80, 80);
 	public Color cLink = new Color(255, 0, 255);
+	public Color cInterSinkPath = new Color(255, 255, 0);
+	public Color cSinkSelected = new Color(0, 0, 255);
+	public Color cSinkPath = new Color(255, 0, 0);
 	public Color cReachS = new Color(0, 0, 255, 70);
 	public Color cCross = Color.RED;
 	public Color bckgrnd = new Color(255, 255, 255);
-	public Stroke sEdge = new BasicStroke(2);
+	public Stroke thinEdge = new BasicStroke(1);
+	public Stroke mediumEdge = new BasicStroke(2);
+	public Stroke thickEdge = new BasicStroke(3);
 	
 	public Point oldLoc;
 	public Point slcTpLeft;
@@ -102,7 +101,8 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	public JLabel moteID;
 	public JLabel moteRadius;
 	
-	public final Random rgen = new Random(90876875);
+	//Test seed is 90876875
+	public final Random rgen = new Random();
 	
 	public final JFileChooser fc = new JFileChooser();
 	/**
@@ -144,6 +144,12 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		} catch (Exception e) {
 			e.printStackTrace();
 		} 
+		
+		FileFilter simpleFilter = new FileNameExtensionFilter(".topo, .tpl", "*.topo", "*.tpl");
+		FileFilter trafficFilter = new FileNameExtensionFilter(".tfc", "*.tfc");
+		fc.addChoosableFileFilter(simpleFilter);
+		fc.addChoosableFileFilter(trafficFilter);
+		
 		frame = new JFrame();
 		frame.setResizable(false);
 		frame.setBounds(100, 100, 791, 520);
@@ -230,21 +236,30 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		JMenu mnFile = new JMenu("File");
 		menuBar.add(mnFile);
 		
-		JMenuItem mntmSave = new JMenuItem("Save");
+		JMenu mnTools = new JMenu("Tools");
+		menuBar.add(mnTools);
+		
+		JMenu mnTopoGen = new JMenu("TopoGen");
+		mnTools.add(mnTopoGen);
+		
+		JMenu mnRandom = new JMenu("Random");
+		mnTopoGen.add(mnRandom);
+		
+		JMenuItem mntmSave = new JMenuItem("Save", KeyEvent.VK_S);
 		mntmSave.setActionCommand("saveMenu");
 		mntmSave.addActionListener(this);
 		mntmSave.setAccelerator(KeyStroke.getKeyStroke(
 		        KeyEvent.VK_S, ActionEvent.CTRL_MASK));
 		mnFile.add(mntmSave);
 		
+		JMenuItem mntmReset = new JMenuItem("Reset", KeyEvent.VK_R);
+		mntmReset.setActionCommand("resetMenu");
+		mntmReset.addActionListener(this);
+		mntmReset.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_MASK));
+		mnFile.add(mntmReset);
+		
 		JMenuItem mntmOpen = new JMenuItem("Open");
 		mnFile.add(mntmOpen);
-		
-		JMenu mnTools = new JMenu("Tools");
-		menuBar.add(mnTools);
-		
-		JMenu mnTopoGen = new JMenu("TopoGen");
-		mnTools.add(mnTopoGen);
 		
 		JMenuItem mntmGrid = new JMenuItem("Grid", KeyEvent.VK_G);
 		mntmGrid.setActionCommand("gridMenu");
@@ -253,8 +268,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		        KeyEvent.VK_G, ActionEvent.CTRL_MASK));
 		mnTopoGen.add(mntmGrid);
 		
-		JMenu mnRandom = new JMenu("Random");
-		mnTopoGen.add(mnRandom);
+		
 		
 		JMenuItem mntmNaive = new JMenuItem("Naive", KeyEvent.VK_N);
 		mntmNaive.setActionCommand("naiveMenu");
@@ -321,97 +335,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		g2.drawLine(xLeft, yDown, xRight, yUp);
 		g2.drawLine(xLeft, yUp, xRight, yDown);
 	}
-	
-	private synchronized void refreshView(){
-		Graphics2D g =  (Graphics2D)landfield.getGraphics();
-		Color c = g.getColor();
-		g.setStroke(sEdge);
-		//g.setColor(bckgrnd);
-		Rectangle rec = landfield.getVisibleRect();
-		g.clearRect(rec.x , rec.y , rec.width , rec.height );
-		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
-                RenderingHints.VALUE_ANTIALIAS_ON);
-		g.setColor(cEdge);
-		/*
-		for(int i= 1; i <=19; i++){
-			int indx = 50 * i;
-			g.drawLine(0, indx, 1000, indx);
-			g.drawLine( indx, 0, indx, 1000);
-		}
-		*/
-		for(Mote m: motes){
-			if(m != slcMote){
-				int r = m.getRadius();
-				Point p = m.getLocation();
-				g.setColor(cReach);
-				g.fillOval(p.x - r , p.y - r , 2 * r + 1, 2 * r + 1);
-				
-				List<Mote> ns = m.getOutNeighbours();
-				for(Mote n: ns){
-					g.setColor(cEdge);
-					g.drawLine(p.x, p.y, n.location.x, n.location.y);
-					drawArrowHead(g, n.location,p);
-				}
-				g.setColor(cMote);
-				g.fillOval(p.x - 5, p.y - 5, 11, 11);
-				if(m.getSink()){
-					drawCross(g,p);
-				}
-				g.setColor(cText);
-				g.drawString("id: " +m.getId(), p.x - 5, p.y + 20);
-				g.drawString("r: " +m.getRadius(), p.x - 5, p.y + 30);
-			}
-		}
-		
-		if(slcMote != null){
-			int r = slcMote.getRadius();
-			Point p = slcMote.getLocation();
-			g.setColor(cReachS);
-			g.fillOval((int)p.getX() - r , (int)p.getY() - r , 2 * r + 1, 2 * r + 1);
-			if(slcMote.getResize()){
-				g.setColor(cMoteS);
-				g.drawOval((int)p.getX() - r , (int)p.getY() - r  , 2 * r + 1, 2 * r + 1);
-			}
-			
-			
-			List<Mote> ns = slcMote.getOutNeighbours();
-			for(Mote n: ns){
-				g.setColor(cEdge);
-				g.drawLine(p.x, p.y, n.location.x, n.location.y);
-				drawArrowHead(g, n.location,p);
-			}
-			
-			if(slcMote.getDragging()){
-				g.setColor(cMoteSD);
-			}else{
-				g.setColor(cMoteS);
-			}
-			g.fillOval((int)p.getX() - 5, (int)p.getY() - 5, 11, 11);
-			if(slcMote.isSink){
-				drawCross(g,p);
-			}
-			g.setColor(cText);
-			g.drawString("id: " +slcMote.getId(), p.x - 5, p.y + 20);
-			g.drawString("r: " +slcMote.getRadius(), p.x - 5, p.y + 30);
-		}
-		
-		if(curAction == Action.SELECTION){
-			float dash1[] = {10.0f};
-		    BasicStroke dashed =
-		        new BasicStroke(1.0f,
-		                        BasicStroke.CAP_BUTT,
-		                        BasicStroke.JOIN_MITER,
-		                        10.0f, dash1, 0.0f);
-		    Stroke oldStrk = g.getStroke();
-		    g.setStroke(dashed);
-		    int width = slcBtmRgt.x - slcTpLeft.x;
-		    int height = slcBtmRgt.y - slcTpLeft.y;
-		    g.drawRect(slcTpLeft.x, slcTpLeft.y, width, height);
-		    g.setStroke(oldStrk);
-		}
-		
-		g.setColor(c);
-	}
+
 	
 	private int getMoteAt(int x, int y) {
 		return map[x][y];
@@ -478,7 +402,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		}
 		slcMote = null;
 		idCounter = 1;
-		landfield.refreshView();
+		landfield.repaint();
 	}
 	
 	
@@ -502,6 +426,24 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		
 	}
 	
+	private void saveTraffic(BufferedWriter topo){
+		try {
+			for(Mote m : motes){
+				topo.write("node " + m.getId() + " " + m.location.x + " " + m.location.y + " " + m.isSink + "\n");
+			}
+			
+			for(Link l:links){
+				topo.write("gain " + l.from.id + " " + l.to.id + " " + l.traffic + "\n");
+			}
+			
+			topo.flush();
+			topo.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
 	private void createGrid(int row, int col) {
 		reset();
 		
@@ -520,7 +462,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 			}
 		}
 		setUpNetwork();
-		landfield.refreshView();
+		landfield.repaint();
 	}
 	
 	private void createNaive(int num){
@@ -554,7 +496,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 			}
 		}
 		setUpNetwork();
-		landfield.refreshView();
+		landfield.repaint();
 	} 
 	
 	private void createTrueUniformRandom(int width, int height, int num){
@@ -574,7 +516,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 			}
 		}
 		setUpNetwork();
-		landfield.refreshView();
+		landfield.repaint();
 /*		int numOfSinks = num/10;
 		int curNumOfSinks = 0;
 		while(curNumOfSinks < numOfSinks){
@@ -628,7 +570,6 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		if(action.equalsIgnoreCase("addNode")){
 			curAction = Action.ADDING;
 		}else if(action.equalsIgnoreCase("saveMenu")){
-			System.out.println("Save menu selected");
 			int returnVal = fc.showSaveDialog(frame);
 			if (returnVal == JFileChooser.APPROVE_OPTION) {
 	            File topoFile = fc.getSelectedFile();
@@ -638,10 +579,15 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	            }
 	            //This is where a real application would open the file.
 	            
-	            System.out.println("Saving at: " + topoFile.getAbsolutePath() + ".");
 	            try {
 					BufferedWriter outFile = new BufferedWriter( new FileWriter( topoFile ) );
-					saveTopology(outFile);
+					FileFilter ff = fc.getFileFilter();
+					if(ff.getDescription().contains("tpl")){
+						saveTopology(outFile);
+					}else if((ff.getDescription().contains("tfc"))){
+						saveTraffic(outFile);
+					}
+					
 					return;
 				} catch (IOException e1) {
 					// TODO Auto-generated catch block
@@ -678,6 +624,8 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	        	int num = customDialog.getNum();
 	        	createTrueUniformRandom(w, h, num);
 	        }
+		}else if(action.equalsIgnoreCase("resetMenu")){
+			reset();
 		}
 		
 	}
@@ -757,7 +705,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 			}
 			break;
 		}
-		landfield.refreshView();
+		landfield.repaint();
 		
 	}
 
@@ -790,7 +738,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		curAction = Action.NONE;
 		drawLayout = true;
 		setUpNetwork();
-		landfield.refreshView();
+		landfield.repaint();
 	}
 	
 	@Override
@@ -837,7 +785,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 				}
 			}
 			if(redraw)
-				landfield.refreshView();
+				landfield.repaint();
 		}
 	}
 	
@@ -849,20 +797,20 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		case DRAGGING:
 			slcMote.setLocation(x, y);
 			slcMote.maintainConsistency();
-			landfield.refreshView();
+			landfield.repaint();
 			break;
 		case RESIZING:
 			int r = (int)slcMote.getLocation().distance(x, y);
 			if(r > 8){
 				slcMote.setRadius(r);
 				slcMote.maintainConsistency();
-				landfield.refreshView();
+				landfield.repaint();
 			}
 			break;
 		case SELECTION:
 			slcBtmRgt.x = x;
 			slcBtmRgt.y = y;
-			landfield.refreshView();
+			landfield.repaint();
 			break;
 		}
 		
@@ -884,17 +832,17 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		if(e.getKeyChar() == 'x'){
 			if(slcMote != null){
 				if(slcMote.isSink){
-					slcMote.isSink = false;
+					slcMote.setSink(false);
 					sinks.remove(slcMote);
 				}else{
-					slcMote.isSink = true;
+					slcMote.setSink(true);
 					sinks.add(slcMote);
 				}
 				setUpNetwork();
 			}
 			
 		}
-		landfield.refreshView();
+		landfield.repaint();
 	}
 
 	@Override
@@ -915,13 +863,14 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	
 	public void computeTrafics(){
 		for(Mote m: motes){
+			m.pathToSink = null;
+			m.sinkMap.clear();
 			if(!m.isSink){
-				System.out.println("attending " + m.id);
 				Map<Mote, Mote> tree =  spanRouteTree(m);
 				List<Mote> pathToClosestSink = null;
 				for(Mote s:sinks){
 					List<Mote> pathToSink = getShortestPath(m, s, tree);
-					if(pathToSink.size() == 0)
+					if(pathToSink.size() < 2)
 						continue;
 					
 					if(pathToClosestSink == null || pathToSink.size() < pathToClosestSink.size()){
@@ -929,10 +878,24 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 					}
 				}
 				if(pathToClosestSink != null)
-					addFlow(pathToClosestSink, 0.05);
+					addFlow(pathToClosestSink, 0.05, true);
+			}else{
+				Map<Mote, Mote> tree =  spanRouteTree(m);
+				for(Mote s:sinks){
+					List<Mote> pathToAnotherSink = getShortestPath(m, s, tree);
+					if(pathToAnotherSink.size() < 2)
+						continue;
+					addFlow(pathToAnotherSink, 0.0, true);
+				}
 			}
 		}
+		
+		for(Mote s:sinks){
+			s.imposeInterSinkTraffic();
+		}
+		
 	}
+	
 	
 	
 	public Map<Mote, Mote> spanRouteTree(Mote s){
@@ -970,7 +933,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	
 	public void createLinks(){
 		for(Mote m:motes){
-			for(Mote n:m.inNeighbours){
+			for(Mote n:m.outNeighbours){
 				links.add(new Link(m,n));
 			}
 		}
@@ -980,15 +943,30 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		links.clear();
 	}
 	
-	public void addFlow(List<Mote> chain, double tfc){
+	public void addFlow(List<Mote> chain, double tfc,  boolean register){
+		List<Link> path = null;
+		
+		if(register){
+			path = new ArrayList<Link>();
+		}
+		Mote source = null;
 		for(int i = 0; i < chain.size() - 1; i++){
-			Mote f = chain.get(i);
-			Mote t = chain.get(i + 1);
+			Mote t = chain.get(i);
+			Mote f = chain.get(i + 1);
 			for(Link l : links){
 				if(l.from.equals(f) && l.to.equals(t)){
 					l.addTraffic(tfc);
+					if(register){
+						path.add(l);
+					}
 				}
 			}
+			source = f;
+			
+		}
+		
+		if(register){
+			source.registerSinkPath(path, chain.get(0));
 		}
 	}
 	
@@ -1024,6 +1002,8 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		int radius, id;
 		Point location;
 		List<Point> rgns;
+		List<Link> pathToSink;
+		Map<Mote,List<Link>> sinkMap;
 		boolean isSelected = false;
 		boolean isResizing = false;
 		boolean isDragging = false;
@@ -1039,9 +1019,30 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 			inNeighbours = new ArrayList<Mote>();
 			location = new Point(x, y);
 			radius = r;
+			sinkMap = new HashMap<Mote,List<Link>>();
 		}
 
 		
+
+		public void imposeInterSinkTraffic() {
+				if(!isSink)
+					return;
+				
+				double traffic = 0.0;
+				for(Link l:links){
+					if(l.to.equals(this)){
+						traffic += l.traffic;
+					}
+				}
+				
+				for(List<Link> p:sinkMap.values()){
+					for(Link l:p){
+						l.addTraffic(traffic);
+					}
+				}
+		}
+
+
 
 		public Mote(int x,int y){
 			id = idCounter++;
@@ -1051,6 +1052,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 			inNeighbours = new ArrayList<Mote>();
 			location = new Point(x, y);
 			radius = 50;
+			sinkMap = new HashMap<Mote,List<Link>>();
 		}
 		
 		public void saveOutNeighbours(BufferedWriter topo) {
@@ -1114,6 +1116,11 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		
 		public void setSink(boolean s){
 			isSink = s;
+/*			if(isSink){
+				pathToSink = null;
+			}else{
+				sinkMap.clear();
+			}*/
 		}
 		
 		public int getId(){
@@ -1252,7 +1259,13 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 			}
 		}
 		
-		
+		public void registerSinkPath(List<Link> path, Mote sink){
+			if(isSink){
+				sinkMap.put(sink, path);
+			}else{
+				pathToSink = path;
+			}
+		}
 		
 		private boolean checkout(Mote mote) {
 			if(radius < location.distance(mote.location.x, mote.location.y)){
@@ -1269,10 +1282,4 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 			return "[" +id + ", " + radius+ ", (" + location.x+", " +location.y+ ")]";
 		}
 	}
-
-
-
-
-
-
 }

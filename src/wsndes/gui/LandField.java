@@ -63,9 +63,13 @@ public class LandField extends JPanel {
 	}
 	
 	public void paintComponent(Graphics gfx){
+		refreshView(gfx);
+	}
+	
+	public void refreshView(Graphics gfx){
 		Graphics2D g =  (Graphics2D)gfx;
 		Color c = g.getColor();
-		g.setStroke(main.sEdge);
+		g.setStroke(main.mediumEdge);
 		g.setColor(main.bckgrnd);
 		Rectangle rec = this.getVisibleRect();
 		g.clearRect(rec.x , rec.y , rec.width , rec.height );
@@ -94,11 +98,13 @@ public class LandField extends JPanel {
 		for(Mote m: main.motes){
 			Point p = m.getLocation();
 			List<Mote> ns = m.getOutNeighbours();
+			g.setColor(main.cEdge);
+			g.setStroke(main.thinEdge);
 			for(Mote n: ns){
-				g.setColor(main.cEdge);
 				g.drawLine(p.x, p.y, n.location.x, n.location.y);
 				drawArrowHead(g, n.location,p);
 			}
+			g.setStroke(main.mediumEdge);
 		}
 		
 		if(main.drawLayout){
@@ -109,6 +115,42 @@ public class LandField extends JPanel {
 				Point f = l.from.location;
 				Point t = l.to.location;
 				g.drawLine(f.x, f.y, t.x, t.y);
+			}
+			
+			g.setStroke(main.thickEdge);
+			g.setColor(main.cInterSinkPath);
+			
+			for(Mote m: main.sinks){
+				if(m == main.slcMote)
+					continue;
+				
+				for(List<Link> p : m.sinkMap.values()){
+					for(Link l :p){
+						Point f = l.from.location;
+						Point t = l.to.location;
+						g.drawLine(f.x, f.y, t.x, t.y);
+					}
+				}
+			}
+			
+			if(main.slcMote != null && !main.slcMote.isSink && main.slcMote.pathToSink != null){
+				g.setStroke(main.thickEdge);
+				g.setColor(main.cSinkPath);
+				for(Link l :main.slcMote.pathToSink){
+					Point f = l.from.location;
+					Point t = l.to.location;
+					g.drawLine(f.x, f.y, t.x, t.y);
+				}
+			}else if(main.slcMote != null && main.slcMote.isSink){
+				g.setStroke(main.thickEdge);
+				g.setColor(main.cSinkSelected);
+				for(List<Link> p : main.slcMote.sinkMap.values()){
+					for(Link l :p){
+						Point f = l.from.location;
+						Point t = l.to.location;
+						g.drawLine(f.x, f.y, t.x, t.y);
+					}
+				}
 			}
 		}
 		
@@ -166,9 +208,5 @@ public class LandField extends JPanel {
 		}
 		
 		g.setColor(c);
-	}
-	
-	public void refreshView(){
-		repaint();
 	}
 }
