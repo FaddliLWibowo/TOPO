@@ -18,14 +18,19 @@ import javax.swing.JPanel;
 import java.awt.Color;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.Line2D;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -35,6 +40,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.StringTokenizer;
+
 import javax.swing.JButton;
 import javax.swing.border.EtchedBorder;
 import javax.swing.event.ChangeEvent;
@@ -50,9 +57,17 @@ import javax.swing.JMenuBar;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import java.awt.event.InputEvent;
+import javax.swing.JCheckBox;
+import javax.swing.JComboBox;
 
 
-public class MainAppWindow implements ActionListener, MouseListener, MouseMotionListener, ChangeListener, KeyListener{
+public class MainAppWindow implements ActionListener, ItemListener, MouseListener, MouseMotionListener, ChangeListener, KeyListener{
+	
+	public enum LinkPresentation{
+		SIMPLE,
+		TRAFFIC
+	}
+	
 	public enum Action{
 		NONE,
 		ADDING,
@@ -77,7 +92,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	public Map<Integer, Mote> moteid;
 	public Mote slcMote = null;
 	public Color cMote = new Color( 0, 0, 0);
-	public Color cReach = new Color(100, 205, 0, 70);
+	public Color cReach = new Color(100, 205, 0, 50);
 	public Color cMoteS = new Color(255, 64, 64);
 	public Color cMoteSD = new Color(200, 64, 64);
 	public Color cText = new Color(50, 50, 50);
@@ -100,6 +115,8 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	public JLabel pointerLoc;
 	public JLabel moteID;
 	public JLabel moteRadius;
+	public JComboBox comboBox;
+	public JCheckBox chckbxCons,chckbxLinks, chckbxRanges, chckbxSinkOverlay, chckbxPaths;
 	
 	//Test seed is 90876875
 	public final Random rgen = new Random();
@@ -212,7 +229,7 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		InfoPanel.add(moteRadius);
 		
 		dSizeLable = new JLabel("");
-		dSizeLable.setBounds(739, 228, 17, 16);
+		dSizeLable.setBounds(738, 278, 17, 16);
 		frame.getContentPane().add(dSizeLable);
 		
 		dfSlider = new JSlider();
@@ -221,14 +238,53 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		dfSlider.setMinimum(10);
 		dfSlider.setMaximum(100);
 		dfSlider.setOrientation(SwingConstants.VERTICAL);
-		dfSlider.setBounds(730, 65, 35, 161);
+		dfSlider.setBounds(729, 113, 35, 161);
 		dfSlider.addChangeListener(this);
 		frame.getContentPane().add(dfSlider);
 		dfSlider.setValue(70);
 		
-		JLabel lblRadius = new JLabel("Radius:");
-		lblRadius.setBounds(671, 228, 56, 16);
+		JLabel lblRadius = new JLabel("Radius");
+		lblRadius.setBounds(727, 97, 56, 16);
 		frame.getContentPane().add(lblRadius);
+		
+		chckbxCons = new JCheckBox("Connections");
+		chckbxCons.setBounds(591, 13, 111, 25);
+		chckbxCons.setSelected(true);
+		chckbxCons.addItemListener(this);
+		frame.getContentPane().add(chckbxCons);
+		
+		chckbxLinks = new JCheckBox("Links");
+		chckbxLinks.setBounds(591, 43, 111, 25);
+		chckbxLinks.setSelected(true);
+		chckbxLinks.addItemListener(this);
+		frame.getContentPane().add(chckbxLinks);
+		
+		comboBox = new JComboBox();
+		comboBox.setBounds(595, 77, 107, 24);
+		comboBox.addItem("Simple");
+		comboBox.addItem("Traffics");
+		comboBox.setSelectedIndex(0);
+		comboBox.setActionCommand("linkPrs");
+		comboBox.addActionListener(this);
+		frame.getContentPane().add(comboBox);
+		
+		chckbxRanges = new JCheckBox("Ranges");
+		chckbxRanges.setBounds(591, 113, 111, 25);
+		chckbxRanges.setSelected(true);
+		chckbxRanges.addItemListener(this);
+		frame.getContentPane().add(chckbxRanges);
+		
+		chckbxSinkOverlay = new JCheckBox("Sink overlay");
+		chckbxSinkOverlay.setBounds(591, 143, 111, 25);
+		chckbxSinkOverlay.setSelected(true);
+		chckbxSinkOverlay.addItemListener(this);
+		frame.getContentPane().add(chckbxSinkOverlay);
+		
+		chckbxPaths = new JCheckBox("Paths");
+		chckbxPaths.setBounds(591, 173, 111, 25);
+		chckbxPaths.setSelected(true);
+		chckbxPaths.addItemListener(this);
+		frame.getContentPane().add(chckbxPaths);
 		
 		JMenuBar menuBar = new JMenuBar();
 		frame.setJMenuBar(menuBar);
@@ -258,7 +314,11 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		mntmReset.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_MASK));
 		mnFile.add(mntmReset);
 		
-		JMenuItem mntmOpen = new JMenuItem("Open");
+		JMenuItem mntmOpen = new JMenuItem("Open", KeyEvent.VK_O);
+		mntmOpen.setActionCommand("openMenu");
+		mntmOpen.addActionListener(this);
+		mntmOpen.setAccelerator(KeyStroke.getKeyStroke(
+		        KeyEvent.VK_O, ActionEvent.CTRL_MASK));
 		mnFile.add(mntmOpen);
 		
 		JMenuItem mntmGrid = new JMenuItem("Grid", KeyEvent.VK_G);
@@ -289,21 +349,6 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		sinks = new ArrayList<Mote>();
 		links = new ArrayList<Link>();
 		moteid = new HashMap<Integer, Mote>();
-		
-/*		Thread t = new Thread(new Runnable(){
-
-			@Override
-			public void run() {
-				while(true){
-					try{ 
-						Thread.sleep(500);
-					} catch( InterruptedException e ) {
-						System.out.println("Interrupted Exception caught");
-					}
-					landfield.refreshView();
-				}
-			}});*/
-		//t.start();
 	}
 	
 	
@@ -429,11 +474,12 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	private void saveTraffic(BufferedWriter topo){
 		try {
 			for(Mote m : motes){
-				topo.write("node " + m.getId() + " " + m.location.x + " " + m.location.y + " " + m.isSink + "\n");
+				topo.write("node " + m.getId() + " " + m.location.x + " " + m.location.y + " " + m.isSink  + " " + m.radius+ "\n");
 			}
 			
 			for(Link l:links){
-				topo.write("gain " + l.from.id + " " + l.to.id + " " + l.traffic + "\n");
+				if(l.traffic > 0.01)	
+					topo.write("gain " + l.from.id + " " + l.to.id + " " + l.traffic + "\n");
 			}
 			
 			topo.flush();
@@ -442,6 +488,42 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+	
+	private void loadTopology(BufferedReader br) {
+		reset();
+		String line;
+		try {
+			while((line = br.readLine()) != null) {
+				StringTokenizer stk = new StringTokenizer(line, " ");
+				if(!stk.hasMoreTokens())
+					continue;
+				String type = stk.nextToken();
+	        	if(type.equalsIgnoreCase("node")){
+	        		int id = Integer.parseInt(stk.nextToken());
+	        		int x = 2*Integer.parseInt(stk.nextToken());
+	        		int y = 2*Integer.parseInt(stk.nextToken());
+	        		boolean s = Boolean.parseBoolean(stk.nextToken());
+	        		int r = 2*Integer.parseInt(stk.nextToken());
+	        		Mote m = new Mote(x, y, r, s);
+	        		if(s){
+	        			sinks.add(m);
+	        		}
+	        		
+					motes.add(m);
+					moteid.put(Integer.valueOf(m.getId()), m);
+					fillMap(x, y, m.getId());
+					m.maintainConsistency();
+	        	}
+			}
+			setUpNetwork();
+			drawLayout = true;
+			landfield.repaint();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 	
 	private void createGrid(int row, int col) {
@@ -502,10 +584,12 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	private void createTrueUniformRandom(int width, int height, int num){
 		reset();
 		int numOfMotes = 1;
+		int xoff = 30;
+		int yoff = 30;
 		
 		while(numOfMotes <= num){
-			int x = rgen.nextInt(width);
-			int y = rgen.nextInt(height);
+			int x = rgen.nextInt(width) + xoff;
+			int y = rgen.nextInt(height) + yoff;
 			if(isLocationAvailable(x, y)){
 				Mote m = new Mote(x, y, dfRadius);
 				motes.add(m);
@@ -517,16 +601,6 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		}
 		setUpNetwork();
 		landfield.repaint();
-/*		int numOfSinks = num/10;
-		int curNumOfSinks = 0;
-		while(curNumOfSinks < numOfSinks){
-			int index = rgen.nextInt(num);
-			Mote m = motes.get(index);
-			if(!m.isSink){
-				m.setSink(true);
-				curNumOfSinks++;
-			}
-		}*/
 	}
 	
 	private boolean pointAcceptable(Point p, Mote m){
@@ -569,6 +643,17 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 		String action = e.getActionCommand();
 		if(action.equalsIgnoreCase("addNode")){
 			curAction = Action.ADDING;
+		}else if(action.equalsIgnoreCase("openMenu")){
+			int returnVal = fc.showOpenDialog(frame);
+			if (returnVal == JFileChooser.APPROVE_OPTION) {
+				File topoFile = fc.getSelectedFile();
+				try {
+					BufferedReader br = new BufferedReader(new FileReader(topoFile));
+					loadTopology(br);
+				} catch (FileNotFoundException e1) {
+					e1.printStackTrace();
+				}
+			}
 		}else if(action.equalsIgnoreCase("saveMenu")){
 			int returnVal = fc.showSaveDialog(frame);
 			if (returnVal == JFileChooser.APPROVE_OPTION) {
@@ -580,11 +665,15 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	            //This is where a real application would open the file.
 	            
 	            try {
-					BufferedWriter outFile = new BufferedWriter( new FileWriter( topoFile ) );
+					
 					FileFilter ff = fc.getFileFilter();
 					if(ff.getDescription().contains("tpl")){
+						File f = new File(topoFile.getAbsolutePath() + ".tpl");
+						BufferedWriter outFile = new BufferedWriter( new FileWriter( f ) );
 						saveTopology(outFile);
 					}else if((ff.getDescription().contains("tfc"))){
+						File f = new File(topoFile.getAbsolutePath() + ".tfc");
+						BufferedWriter outFile = new BufferedWriter( new FileWriter( f ) );
 						saveTraffic(outFile);
 					}
 					
@@ -626,10 +715,23 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 	        }
 		}else if(action.equalsIgnoreCase("resetMenu")){
 			reset();
+		}else if(action.equalsIgnoreCase("linkPrs")){
+			switch(comboBox.getSelectedIndex()){
+			case 0:
+				landfield.setLinkMode(LinkPresentation.SIMPLE);
+				break;
+			case 1:
+				landfield.setLinkMode(LinkPresentation.TRAFFIC);
+				break;
+			
+			}
+			landfield.repaint();
 		}
 		
 	}
 	
+	
+
 	@Override
 	public void mouseClicked(MouseEvent e) {
 	}
@@ -854,6 +956,24 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 
 	}
 	
+	@Override
+	public void itemStateChanged(ItemEvent e) {
+		Object source = e.getSource();
+		if(source == chckbxCons){
+			landfield.connectionLayerOn = chckbxCons.isSelected();
+		}else if(source == chckbxLinks){
+			landfield.linkLayerOn = chckbxLinks.isSelected();
+			comboBox.setEnabled(chckbxLinks.isSelected());
+		}else if(source ==  chckbxRanges){
+			landfield.rangeLayerOn = chckbxRanges.isSelected();
+		}else if(source ==  chckbxSinkOverlay){
+			landfield.sinkOverlayLayerOn = chckbxSinkOverlay.isSelected();
+		}else if(source ==  chckbxPaths){
+			landfield.pathLayerOn = chckbxPaths.isSelected();
+		}
+		
+		landfield.repaint();
+	}
 	
 	public void setUpNetwork(){
 		discardLinks();
@@ -1055,6 +1175,20 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 			sinkMap = new HashMap<Mote,List<Link>>();
 		}
 		
+		public Mote(int x, int y, int r, boolean s) {
+			isSink = s;
+			id = idCounter++;
+			idObj = new Integer(id);
+			rgns = new ArrayList<Point>();
+			outNeighbours = new ArrayList<Mote>();
+			inNeighbours = new ArrayList<Mote>();
+			location = new Point(x, y);
+			radius = r;
+			sinkMap = new HashMap<Mote,List<Link>>();
+		}
+
+
+
 		public void saveOutNeighbours(BufferedWriter topo) {
 			try {
 				for(int i = 0; i < outNeighbours.size(); i++){
@@ -1282,4 +1416,6 @@ public class MainAppWindow implements ActionListener, MouseListener, MouseMotion
 			return "[" +id + ", " + radius+ ", (" + location.x+", " +location.y+ ")]";
 		}
 	}
+
+	
 }

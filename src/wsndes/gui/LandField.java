@@ -9,9 +9,11 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.Stroke;
 import java.awt.geom.Line2D;
+import java.awt.geom.QuadCurve2D;
 import java.util.List;
 
 import wsndes.gui.MainAppWindow.Link;
+import wsndes.gui.MainAppWindow.LinkPresentation;
 import wsndes.gui.MainAppWindow.Mote;
 
 import javax.swing.Action;
@@ -26,6 +28,12 @@ public class LandField extends JPanel {
 	 */
 	private static final long serialVersionUID = -3480220979536559883L;
 	MainAppWindow main;
+	LinkPresentation lp = LinkPresentation.SIMPLE;
+	public boolean linkLayerOn = true;
+	public boolean rangeLayerOn = true;
+	public boolean connectionLayerOn = true;
+	public boolean pathLayerOn = true;
+	public boolean sinkOverlayLayerOn = true;
 	
 	/**
 	 * Create the panel.
@@ -33,6 +41,27 @@ public class LandField extends JPanel {
 	public LandField(MainAppWindow m) {
 		main = m;
 	}
+	
+	
+	void drawArrowHead(Graphics2D g2, double tipX, double tipY, double tailX, double tailY)  
+    {  
+		double phi = Math.toRadians(30);  
+        int barb = 10;
+        Color old_c = g2.getColor();
+		g2.setColor(new Color(50, 50, 50));  
+        double dy = tipY - tailY;  
+        double dx = tipX - tailX;  
+        double theta = Math.atan2(dy, dx);   
+        double x, y, rho = theta + phi;  
+        for(int j = 0; j < 2; j++)  
+        {  
+            x = tipX - barb * Math.cos(rho);  
+            y = tipY - barb * Math.sin(rho);  
+            g2.draw(new Line2D.Double(tipX, tipY , x, y));  
+            rho = theta - phi;  
+        }  
+        g2.setColor(old_c); 
+    }
 	
 	void drawArrowHead(Graphics2D g, Point tip, Point tail)  
     {  
@@ -63,6 +92,7 @@ public class LandField extends JPanel {
 	}
 	
 	public void paintComponent(Graphics gfx){
+		super.paintComponents(gfx);
 		refreshView(gfx);
 	}
 	
@@ -77,63 +107,116 @@ public class LandField extends JPanel {
 		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
 		g.setColor(main.cEdge);
-
-		for(Mote m: main.motes){
-			if(m != main.slcMote){
-				int r = m.getRadius();
-				Point p = m.getLocation();
-				g.setColor(main.cReach);
-				g.fillOval(p.x - r , p.y - r , 2 * r + 1, 2 * r + 1);
+		
+		
+		if(rangeLayerOn ){
+			for(Mote m: main.motes){
+				if(m != main.slcMote){
+					int r = m.getRadius();
+					Point p = m.getLocation();
+					g.setColor(main.cReach);
+					g.fillOval(p.x - r , p.y - r , 2 * r + 1, 2 * r + 1);
+				}
 			}
 		}
 		
-		if(main.slcMote != null){
+		
+		if(main.slcMote != null && rangeLayerOn){
 			int r = main.slcMote.getRadius();
 			Point p = main.slcMote.getLocation();
 			g.setColor(main.cReachS);
 			g.fillOval((int)p.getX() - r , (int)p.getY() - r , 2 * r + 1, 2 * r + 1);
 		}
 		
-		
-		for(Mote m: main.motes){
-			Point p = m.getLocation();
-			List<Mote> ns = m.getOutNeighbours();
-			g.setColor(main.cEdge);
-			g.setStroke(main.thinEdge);
-			for(Mote n: ns){
-				g.drawLine(p.x, p.y, n.location.x, n.location.y);
-				drawArrowHead(g, n.location,p);
+		if(connectionLayerOn ){
+			for(Mote m: main.motes){
+				Point p = m.getLocation();
+				List<Mote> ns = m.getOutNeighbours();
+				g.setColor(main.cEdge);
+				g.setStroke(main.thinEdge);
+				for(Mote n: ns){
+					g.drawLine(p.x, p.y, n.location.x, n.location.y);
+					drawArrowHead(g, n.location,p);
+				}
+				g.setStroke(main.mediumEdge);
 			}
-			g.setStroke(main.mediumEdge);
 		}
 		
+		
 		if(main.drawLayout){
-			g.setColor(main.cLink);
-			for(Link l: main.links){
-				if(l.traffic == 0)
-					continue;
-				Point f = l.from.location;
-				Point t = l.to.location;
-				g.drawLine(f.x, f.y, t.x, t.y);
-			}
-			
-			g.setStroke(main.thickEdge);
-			g.setColor(main.cInterSinkPath);
-			
-			for(Mote m: main.sinks){
-				if(m == main.slcMote)
-					continue;
-				
-				for(List<Link> p : m.sinkMap.values()){
-					for(Link l :p){
+			if(linkLayerOn){
+				if(lp == LinkPresentation.SIMPLE){
+					g.setColor(main.cLink);
+					for(Link l: main.links){
+						if(l.traffic == 0)
+							continue;
 						Point f = l.from.location;
 						Point t = l.to.location;
 						g.drawLine(f.x, f.y, t.x, t.y);
 					}
+				}else if(lp == LinkPresentation.TRAFFIC){
+					g.setColor(Color.RED);
+					for(Link l: main.links){
+						if(l.traffic == 0)
+							continue;
+						Point s = l.from.location;
+						Point d = l.to.location;
+						double dx = d.x - s.x;
+	            		double dy = d.y - s.y;
+	            		double xm = (s.x + d.x)/2.0;
+	            		double ym = (s.y + d.y)/2.0;
+	            		double ortx = -(dy )/5.0;
+	            		double orty = (dx )/5.0;
+	            		double ctrx = xm + ortx;
+	            		double ctry = ym + orty;
+	            		
+	            		double arrHeadX = xm + ortx * 0.5;
+	            		double arrHeadY = ym + orty * 0.5;
+	            		double arrTailX = s.x + ortx * 0.5;
+	            		double arrTailY = s.y + orty * 0.5;
+	            		
+	            		double tfc = l.traffic;
+	            		
+	            		int adjtfc = (int)(tfc * 510);
+	            		int red = 0;
+	            		int green = 0;
+	            		
+	            		if(adjtfc < 256){
+	            			green = 255;
+	            			red = adjtfc;
+	            		}else{
+	            			red = 255;
+	            			green = 255 - (adjtfc%255);
+	            		}
+	            		g.setColor(new Color(red, green, 0));
+	            		QuadCurve2D q = new QuadCurve2D.Double();
+	            		q.setCurve(s.x, s.y, ctrx, ctry, d.x, d.y);
+	            		g.draw(q);
+	            		drawArrowHead(g, arrHeadX, arrHeadY , arrTailX, arrTailY);
+					}
 				}
 			}
 			
-			if(main.slcMote != null && !main.slcMote.isSink && main.slcMote.pathToSink != null){
+			
+			if(sinkOverlayLayerOn ){
+				g.setStroke(main.thickEdge);
+				g.setColor(main.cInterSinkPath);
+				for(Mote m: main.sinks){
+					if(m == main.slcMote)
+						continue;
+					
+					for(List<Link> p : m.sinkMap.values()){
+						for(Link l :p){
+							Point f = l.from.location;
+							Point t = l.to.location;
+							g.drawLine(f.x, f.y, t.x, t.y);
+						}
+					}
+				}
+				
+			}
+			
+			if(main.slcMote != null && !main.slcMote.isSink && main.slcMote.pathToSink != null && pathLayerOn){
 				g.setStroke(main.thickEdge);
 				g.setColor(main.cSinkPath);
 				for(Link l :main.slcMote.pathToSink){
@@ -141,7 +224,7 @@ public class LandField extends JPanel {
 					Point t = l.to.location;
 					g.drawLine(f.x, f.y, t.x, t.y);
 				}
-			}else if(main.slcMote != null && main.slcMote.isSink){
+			}else if(main.slcMote != null && main.slcMote.isSink && pathLayerOn && sinkOverlayLayerOn){
 				g.setStroke(main.thickEdge);
 				g.setColor(main.cSinkSelected);
 				for(List<Link> p : main.slcMote.sinkMap.values()){
@@ -208,5 +291,10 @@ public class LandField extends JPanel {
 		}
 		
 		g.setColor(c);
+	}
+
+	
+	public void setLinkMode(LinkPresentation lp) {
+		this.lp = lp;
 	}
 }
