@@ -169,7 +169,7 @@ public class MainAppWindow implements ActionListener, ItemListener, MouseListene
 		
 		frame = new JFrame();
 		frame.setResizable(false);
-		frame.setBounds(100, 100, 791, 520);
+		frame.setBounds(100, 100, 900, 600);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().setLayout(null);
 		
@@ -178,7 +178,7 @@ public class MainAppWindow implements ActionListener, ItemListener, MouseListene
 		scrollPane = new JScrollPane();
 		scrollPane.setPreferredSize(new Dimension(500, 400));
 		scrollPane.setSize(new Dimension(500, 400));
-		scrollPane.setBounds(12, 13, 571, 435);
+		scrollPane.setBounds(12, 13, 670, 519);
 		frame.getContentPane().add(scrollPane);
 		
 		//landfield = new JPanel();
@@ -197,14 +197,14 @@ public class MainAppWindow implements ActionListener, ItemListener, MouseListene
 		JButton btnAddNode = new JButton("");
 		//btnAddNode.setIcon(new ImageIcon("C:\\Users\\alireza\\workspace\\TossimTopology\\resources\\Addnode.png"));
 		btnAddNode.setIcon(new ImageIcon(getClass().getResource( "/images/Addnode.png")));
-		btnAddNode.setBounds(727, 12, 40, 40);
+		btnAddNode.setBounds(826, 13, 40, 40);
 		btnAddNode.setActionCommand("addNode");
 		btnAddNode.addActionListener(this);
 		frame.getContentPane().add(btnAddNode);
 		
 		JPanel InfoPanel = new JPanel();
 		InfoPanel.setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
-		InfoPanel.setBounds(595, 331, 175, 117);
+		InfoPanel.setBounds(707, 415, 175, 117);
 		frame.getContentPane().add(InfoPanel);
 		InfoPanel.setLayout(null);
 		
@@ -229,7 +229,7 @@ public class MainAppWindow implements ActionListener, ItemListener, MouseListene
 		InfoPanel.add(moteRadius);
 		
 		dSizeLable = new JLabel("");
-		dSizeLable.setBounds(738, 278, 17, 16);
+		dSizeLable.setBounds(837, 279, 17, 16);
 		frame.getContentPane().add(dSizeLable);
 		
 		dfSlider = new JSlider();
@@ -238,29 +238,29 @@ public class MainAppWindow implements ActionListener, ItemListener, MouseListene
 		dfSlider.setMinimum(10);
 		dfSlider.setMaximum(100);
 		dfSlider.setOrientation(SwingConstants.VERTICAL);
-		dfSlider.setBounds(729, 113, 35, 161);
+		dfSlider.setBounds(828, 114, 35, 161);
 		dfSlider.addChangeListener(this);
 		frame.getContentPane().add(dfSlider);
 		dfSlider.setValue(70);
 		
 		JLabel lblRadius = new JLabel("Radius");
-		lblRadius.setBounds(727, 97, 56, 16);
+		lblRadius.setBounds(826, 98, 56, 16);
 		frame.getContentPane().add(lblRadius);
 		
 		chckbxCons = new JCheckBox("Connections");
-		chckbxCons.setBounds(591, 13, 111, 25);
+		chckbxCons.setBounds(690, 14, 111, 25);
 		chckbxCons.setSelected(true);
 		chckbxCons.addItemListener(this);
 		frame.getContentPane().add(chckbxCons);
 		
 		chckbxLinks = new JCheckBox("Links");
-		chckbxLinks.setBounds(591, 43, 111, 25);
+		chckbxLinks.setBounds(690, 44, 111, 25);
 		chckbxLinks.setSelected(true);
 		chckbxLinks.addItemListener(this);
 		frame.getContentPane().add(chckbxLinks);
 		
 		comboBox = new JComboBox();
-		comboBox.setBounds(595, 77, 107, 24);
+		comboBox.setBounds(694, 78, 107, 24);
 		comboBox.addItem("Simple");
 		comboBox.addItem("Traffics");
 		comboBox.setSelectedIndex(0);
@@ -269,19 +269,19 @@ public class MainAppWindow implements ActionListener, ItemListener, MouseListene
 		frame.getContentPane().add(comboBox);
 		
 		chckbxRanges = new JCheckBox("Ranges");
-		chckbxRanges.setBounds(591, 113, 111, 25);
+		chckbxRanges.setBounds(690, 114, 111, 25);
 		chckbxRanges.setSelected(true);
 		chckbxRanges.addItemListener(this);
 		frame.getContentPane().add(chckbxRanges);
 		
 		chckbxSinkOverlay = new JCheckBox("Sink overlay");
-		chckbxSinkOverlay.setBounds(591, 143, 111, 25);
+		chckbxSinkOverlay.setBounds(690, 144, 111, 25);
 		chckbxSinkOverlay.setSelected(true);
 		chckbxSinkOverlay.addItemListener(this);
 		frame.getContentPane().add(chckbxSinkOverlay);
 		
 		chckbxPaths = new JCheckBox("Paths");
-		chckbxPaths.setBounds(591, 173, 111, 25);
+		chckbxPaths.setBounds(690, 174, 111, 25);
 		chckbxPaths.setSelected(true);
 		chckbxPaths.addItemListener(this);
 		frame.getContentPane().add(chckbxPaths);
@@ -943,6 +943,28 @@ public class MainAppWindow implements ActionListener, ItemListener, MouseListene
 				setUpNetwork();
 			}
 			
+		}else if(e.getKeyCode() ==KeyEvent.VK_DELETE){
+			if(slcMote != null){
+				Integer id = new Integer(slcMote.id);
+				motes.remove(slcMote);
+				sinks.remove(slcMote);
+				moteid.remove(id);
+				for(Mote in:slcMote.inNeighbours){
+					in.outNeighbours.remove(slcMote);
+				}
+				for(Mote in:slcMote.outNeighbours){
+					in.inNeighbours.remove(slcMote);
+				}
+				clearMap(slcMote.location.x,slcMote.location.y);
+				for(int i = 0; i < regions.length; i++){
+					for(int j = 0; j < regions[0].length; j++){
+						
+						regions[i][j].remove(id);
+					}
+				}
+				computeTrafics();
+				slcMote = null;
+			}
 		}
 		landfield.repaint();
 	}

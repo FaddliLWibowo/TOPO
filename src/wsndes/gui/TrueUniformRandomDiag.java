@@ -17,6 +17,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JSpinner;
 import javax.swing.SpinnerNumberModel;
+import java.awt.Component;
 
 public class TrueUniformRandomDiag extends JDialog
 implements ActionListener,
@@ -94,6 +95,7 @@ PropertyChangeListener {
                                     null,
                                     options,
                                     options[0]);
+        optionPane.setAlignmentX(Component.CENTER_ALIGNMENT);
         setContentPane(optionPane);
 
         //Handle window closing correctly.

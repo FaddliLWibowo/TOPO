@@ -101,9 +101,13 @@ public class LandField extends JPanel {
 		Color c = g.getColor();
 		g.setStroke(main.mediumEdge);
 		g.setColor(main.bckgrnd);
+		
 		Rectangle rec = this.getVisibleRect();
 		g.clearRect(rec.x , rec.y , rec.width , rec.height );
 		g.fillRect(rec.x, rec.y, rec.width, rec.height);
+		g.setColor(Color.BLACK);
+		g.drawRect(30, 30, 530, 530);
+		
 		g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON);
 		g.setColor(main.cEdge);
